@@ -118,18 +118,37 @@ parcelRequire = (function (modules, cache, entry, globalName) {
 
   return newRequire;
 })({"app.js":[function(require,module,exports) {
+var container = document.getElementById("root");
 var ajax = new XMLHttpRequest();
+var content = document.createElement("div");
 var NEWS_URL = "https://api.hnpwa.com/v0/news/1.json";
+var CONTENT_URL = "https://api.hnpwa.com/v0/item/@id.json";
 ajax.open("GET", NEWS_URL, false);
 ajax.send();
 var newsFeed = JSON.parse(ajax.response);
 var ul = document.createElement("ul");
+window.addEventListener("hashchange", function () {
+  console.log(location.hash);
+  var id = location.hash.substring(1); // 1번째 위치부터 마지마까지의 문자열을 반환해준다.
+
+  ajax.open("GET", CONTENT_URL.replace("@id", id), false); // replace('바꿀 문자', '새로운 문자');
+  ajax.send();
+  var newsContent = JSON.parse(ajax.response);
+  var title = document.createElement("h1");
+  title.innerHTML = newsContent.title;
+  content.appendChild(title);
+  console.log(newsContent);
+});
 for (var i = 0; i < 10; i++) {
   var li = document.createElement("li");
-  li.innerHTML = newsFeed[i].title;
+  var a = document.createElement("a");
+  a.href = "#".concat(newsFeed[i].id);
+  a.innerHTML = "".concat(newsFeed[i].title, " (").concat(newsFeed[i].comments_count, ")");
+  li.appendChild(a);
   ul.appendChild(li);
 }
-document.getElementById("root").appendChild(ul);
+container.appendChild(ul);
+container.appendChild(content);
 },{}],"../../../../usr/local/lib/node_modules/parcel-bundler/src/builtins/hmr-runtime.js":[function(require,module,exports) {
 var global = arguments[3];
 var OVERLAY_ID = '__parcel__error__overlay__';
