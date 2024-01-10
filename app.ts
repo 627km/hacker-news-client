@@ -3,15 +3,30 @@ type Store = {
     currentPage: number;
     feeds: NewsFeed[];
 };
-type NewsFeed = {
+
+// 중복 된 타입
+type News = {
     id: number;
-    comments_count: number;
+    time_ago: string;
+    title: string;
     url: string;
     user: string;
-    time_ago: string;
+    content: string;
+};
+
+type NewsFeed = News & {
+    comments_count: number;
     points: number;
-    title: string;
     read?: boolean; // ?를 붙이면 항상있는 것이 아닌 선택적으로 있는 데이터라는 의미이다.
+};
+
+type NewsDetail = News & {
+    comments: NewsComment[];
+};
+
+type NewsComment = News & {
+    comments: NewsComment[];
+    level: number;
 };
 
 const container: HTMLElement | null = document.getElementById("root");
@@ -24,21 +39,21 @@ let store: Store = {
     feeds: [],
 };
 
-function getData(url) {
+function getData<AjaxResponse>(url: string): AjaxResponse {
     ajax.open("GET", url, false);
     ajax.send();
 
     return JSON.parse(ajax.response);
 }
 
-function makeFeeds(feeds) {
+function makeFeeds(feeds: NewsFeed[]): NewsFeed[] {
     for (let i = 0; i < feeds.length; i++) {
         feeds[i].read = false;
     }
     return feeds;
 }
 
-function updateView(html) {
+function updateView(html: string): void {
     // null을 체크하는 코드: 타입가드(타입을 방어해주다)
     if (container) {
         container.innerHTML = html;
@@ -48,12 +63,12 @@ function updateView(html) {
 }
 
 // 글 목록
-function newsFeed() {
+function newsFeed(): void {
     let newsFeed: NewsFeed[] = store.feeds;
     const newsList = [];
 
     if (newsFeed.length === 0) {
-        newsFeed = store.feeds = makeFeeds(getData(NEWS_URL));
+        newsFeed = store.feeds = makeFeeds(getData<NewsFeed[]>(NEWS_URL));
     }
     let template = `
         <div class="bg-gray-600 min-h-screen">
@@ -103,8 +118,8 @@ function newsFeed() {
     }
 
     template = template.replace("{{__news_feed__}}", newsList.join(""));
-    template = template.replace("{{__prev_page__}}", store.currentPage > 1 ? store.currentPage - 1 : 1);
-    template = template.replace("{{__next_page__}}", store.currentPage + 1);
+    template = template.replace("{{__prev_page__}}", String(store.currentPage > 1 ? store.currentPage - 1 : 1));
+    template = template.replace("{{__next_page__}}", String(store.currentPage + 1));
 
     updateView(template);
 }
@@ -112,9 +127,9 @@ function newsFeed() {
 const ul = document.createElement("ul");
 
 // 글 내용
-function newsDetail() {
+function newsDetail(): void {
     const id = location.hash.substring(7);
-    const newsContent = getData(CONTENT_URL.replace("@id", id));
+    const newsContent = getData<NewsDetail>(CONTENT_URL.replace("@id", id));
     let template = `
         <div class="bg-gray-600 min-h-screen pb-8">
         <div class="bg-white text-xl">
@@ -150,33 +165,36 @@ function newsDetail() {
         }
     }
 
-    function makeComment(comments, called = 0) {
-        const commentString = [];
-
-        for (let i = 0; i < comments.length; i++) {
-            commentString.push(`
-                <div style="padding-left: ${called * 40}px;" class="mt-4">
-                    <div class="text-gray-400">
-                       <i class="fa fa-sort-up mr-2"></i>
-                        <strong>${comments[i].user}</strong> ${comments[i].time_ago}
-                    </div>
-                    <p class="text-gray-700">${comments[i].content}</p>
-                </div>
-            `);
-
-            // 대댓글이 있는 경우
-            if (comments[i].comments.length > 0) {
-                commentString.push(makeComment(comments[i].comments, called + 1)); // 재귀호출
-            }
-        }
-        return commentString.join("");
-    }
-
     updateView(template.replace("{{__comments__}}", makeComment(newsContent.comments)));
 
     // container.innerHTML = template;
 }
-function router() {
+
+function makeComment(comments: NewsComment[]): string {
+    const commentString = [];
+
+    for (let i = 0; i < comments.length; i++) {
+        const comment: NewsComment = comments[i];
+
+        commentString.push(`
+            <div style="padding-left: ${comment.level * 40}px;" class="mt-4">
+                <div class="text-gray-400">
+                   <i class="fa fa-sort-up mr-2"></i>
+                    <strong>${comment.user}</strong> ${comment.time_ago}
+                </div>
+                <p class="text-gray-700">${comment.content}</p>
+            </div>
+        `);
+
+        // 대댓글이 있는 경우
+        if (comment.comments.length > 0) {
+            commentString.push(makeComment(comment.comments)); // 재귀호출
+        }
+    }
+    return commentString.join("");
+}
+
+function router(): void {
     const routePath = location.hash; // location.hash에 '#'만 들어있을 떄는 빈 값을 반환한다.
     // 따라서 이 부분이 참이 된다.
     if (routePath === "") {
