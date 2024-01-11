@@ -120,6 +120,26 @@ parcelRequire = (function (modules, cache, entry, globalName) {
 })({"app.ts":[function(require,module,exports) {
 "use strict";
 
+var __extends = this && this.__extends || function () {
+  var _extendStatics = function extendStatics(d, b) {
+    _extendStatics = Object.setPrototypeOf || {
+      __proto__: []
+    } instanceof Array && function (d, b) {
+      d.__proto__ = b;
+    } || function (d, b) {
+      for (var p in b) if (Object.prototype.hasOwnProperty.call(b, p)) d[p] = b[p];
+    };
+    return _extendStatics(d, b);
+  };
+  return function (d, b) {
+    if (typeof b !== "function" && b !== null) throw new TypeError("Class extends value " + String(b) + " is not a constructor or null");
+    _extendStatics(d, b);
+    function __() {
+      this.constructor = d;
+    }
+    d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+  };
+}();
 var container = document.getElementById("root");
 var ajax = new XMLHttpRequest();
 var content = document.createElement("div");
@@ -129,11 +149,38 @@ var store = {
   currentPage: 1,
   feeds: []
 };
-function getData(url) {
-  ajax.open("GET", url, false);
-  ajax.send();
-  return JSON.parse(ajax.response);
-}
+var Api = /** @class */function () {
+  function Api(url) {
+    this.url = url;
+    this.ajax = new XMLHttpRequest();
+  }
+  Api.prototype.getRequest = function () {
+    this.ajax.open("GET", this.url, false);
+    this.ajax.send();
+    return JSON.parse(this.ajax.response);
+  };
+  return Api;
+}();
+var NewsFeedApi = /** @class */function (_super) {
+  __extends(NewsFeedApi, _super);
+  function NewsFeedApi() {
+    return _super !== null && _super.apply(this, arguments) || this;
+  }
+  NewsFeedApi.prototype.getData = function () {
+    return this.getRequest();
+  };
+  return NewsFeedApi;
+}(Api);
+var NewsDetailApi = /** @class */function (_super) {
+  __extends(NewsDetailApi, _super);
+  function NewsDetailApi() {
+    return _super !== null && _super.apply(this, arguments) || this;
+  }
+  NewsDetailApi.prototype.getData = function () {
+    return this.getRequest();
+  };
+  return NewsDetailApi;
+}(Api);
 function makeFeeds(feeds) {
   for (var i = 0; i < feeds.length; i++) {
     feeds[i].read = false;
@@ -150,10 +197,11 @@ function updateView(html) {
 }
 // 글 목록
 function newsFeed() {
+  var api = new NewsFeedApi(NEWS_URL);
   var newsFeed = store.feeds;
   var newsList = [];
   if (newsFeed.length === 0) {
-    newsFeed = store.feeds = makeFeeds(getData(NEWS_URL));
+    newsFeed = store.feeds = makeFeeds(api.getData());
   }
   var template = "\n        <div class=\"bg-gray-600 min-h-screen\">\n            <div class=\"bg-white text-xl\">\n                <div class=\"mx-auto px-4\">\n                    <div class=\"flex justify-between items-center py-6\">\n                        <div class=\"flex justify-start\">\n                            <h1 class=\"font-extrabold\">Hacker News</h1>\n                        </div>\n                    <div class=\"items-center justify-end\">\n                        <a href=\"#/page/{{__prev_page__}}\" class=\"text-gray-500\">\n                            Previous\n                        </a>\n                        <a href=\"#/page/{{__next_page__}}\" class=\"text-gray-500 ml-4\">\n                            Next\n                        </a>\n                    </div>\n                </div> \n            </div>\n        </div>\n        <div class=\"p-4 text-2xl text-gray-700\">\n            {{__news_feed__}}        \n        </div>\n    </div>\n    ";
   for (var i = (store.currentPage - 1) * 10; i < store.currentPage * 10; i++) {
@@ -168,7 +216,8 @@ var ul = document.createElement("ul");
 // 글 내용
 function newsDetail() {
   var id = location.hash.substring(7);
-  var newsContent = getData(CONTENT_URL.replace("@id", id));
+  var api = new NewsDetailApi(CONTENT_URL.replace("@id", id));
+  var newsContent = api.getData();
   var template = "\n        <div class=\"bg-gray-600 min-h-screen pb-8\">\n        <div class=\"bg-white text-xl\">\n        <div class=\"mx-auto px-4\">\n            <div class=\"flex justify-between items-center py-6\">\n            <div class=\"flex justify-start\">\n                <h1 class=\"font-extrabold\">Hacker News</h1>\n            </div>\n            <div class=\"items-center justify-end\">\n                <a href=\"#/page/".concat(store.currentPage, "\" class=\"text-gray-500\">\n                <i class=\"fa fa-times\"></i>\n                </a>\n            </div>\n            </div>\n        </div>\n        </div>\n\n        <div class=\"h-full border rounded-xl bg-white m-6 p-4 \">\n        <h2>").concat(newsContent.title, "</h2>\n        <div class=\"text-gray-400 h-20\">\n            ").concat(newsContent.content, "\n        </div>\n\n        {{__comments__}}\n\n        </div>\n        </div>\n    ");
   for (var i = 0; i < store.feeds.length; i++) {
     if (store.feeds[i].id === Number(id)) {
