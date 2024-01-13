@@ -1,10 +1,22 @@
 import View from "../core/view";
 
-// 타입 알리아스 (type alias)
-export interface Store {
+export interface NewsStore {
+    getAllFeeds: () => NewsFeed[];
+    getFeed: (position: number) => NewsFeed;
+    setFeeds: (feeds: NewsFeed[]) => void;
+    makeRead: (id: number) => void;
+    hasFeeds: boolean;
     currentPage: number;
-    feeds: NewsFeed[];
+    numberOfFeed: number;
+    nextPage: number;
+    prevPage: number;
 }
+
+// 타입 알리아스 (type alias)
+// export interface Store {
+//     currentPage: number;
+//     feeds: NewsFeed[];
+// }
 
 // 중복 된 타입
 export interface News {
