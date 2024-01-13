@@ -261,15 +261,27 @@ exports.NewsDetailApi = exports.NewsFeedApi = exports.Api = void 0;
 var Api = /*#__PURE__*/function () {
   function Api(url) {
     _classCallCheck(this, Api);
-    this.ajax = new XMLHttpRequest();
+    this.xhr = new XMLHttpRequest();
     this.url = url;
   }
   _createClass(Api, [{
-    key: "getRequest",
-    value: function getRequest() {
-      this.ajax.open("GET", this.url, false);
-      this.ajax.send();
-      return JSON.parse(this.ajax.response);
+    key: "getRequestWithXHR",
+    value: function getRequestWithXHR(cb) {
+      var _this = this;
+      this.xhr.open("GET", this.url); // 비동기
+      this.xhr.addEventListener("load", function () {
+        cb(JSON.parse(_this.xhr.response));
+      });
+      this.xhr.send();
+    }
+  }, {
+    key: "getRequestWithPromise",
+    value: function getRequestWithPromise(cb) {
+      fetch(this.url).then(function (response) {
+        return response.json();
+      }).then(cb).catch(function () {
+        console.error("데이터를 불러오지 못했습니다.");
+      });
     }
   }]);
   return Api;
@@ -283,9 +295,14 @@ var NewsFeedApi = /*#__PURE__*/function (_Api) {
     return _super.apply(this, arguments);
   }
   _createClass(NewsFeedApi, [{
-    key: "getData",
-    value: function getData() {
-      return this.getRequest();
+    key: "getDataWithXHR",
+    value: function getDataWithXHR(cb) {
+      return this.getRequestWithXHR(cb);
+    }
+  }, {
+    key: "getDataWithPromise",
+    value: function getDataWithPromise(cb) {
+      return this.getRequestWithPromise(cb);
     }
   }]);
   return NewsFeedApi;
@@ -299,9 +316,14 @@ var NewsDetailApi = /*#__PURE__*/function (_Api2) {
     return _super2.apply(this, arguments);
   }
   _createClass(NewsDetailApi, [{
-    key: "getData",
-    value: function getData() {
-      return this.getRequest();
+    key: "getDataWithXHR",
+    value: function getDataWithXHR(cb) {
+      return this.getRequestWithXHR(cb);
+    }
+  }, {
+    key: "getDataWithPromise",
+    value: function getDataWithPromise(cb) {
+      return this.getRequestWithPromise(cb);
     }
   }]);
   return NewsDetailApi;
@@ -357,15 +379,18 @@ var NewsDetailView = /*#__PURE__*/function (_view_1$default) {
   _createClass(NewsDetailView, [{
     key: "render",
     value: function render() {
+      var _this2 = this;
       var id = location.hash.substring(7);
       var api = new api_1.NewsDetailApi(config_1.CONTENT_URL.replace("@id", id));
-      var newsDetail = api.getData();
-      this.store.makeRead(Number(id));
-      this.setTemplateData("comments", this.makeComment(newsDetail.comments));
-      this.setTemplateData("currentPage", String(this.store.currentPage));
-      this.setTemplateData("title", newsDetail.title);
-      this.setTemplateData("content", newsDetail.content);
-      this.updateView();
+      api.getDataWithPromise(function (data) {
+        var newsDetail = data;
+        _this2.store.makeRead(Number(id));
+        _this2.setTemplateData("comments", _this2.makeComment(newsDetail.comments));
+        _this2.setTemplateData("currentPage", String(_this2.store.currentPage));
+        _this2.setTemplateData("title", newsDetail.title);
+        _this2.setTemplateData("content", newsDetail.content);
+        _this2.updateView();
+      });
     }
   }, {
     key: "makeComment",
@@ -418,20 +443,10 @@ var NewsFeedView = /*#__PURE__*/function (_view_1$default) {
     var _this;
     _classCallCheck(this, NewsFeedView);
     _this = _super.call(this, containerId, template);
-    _this.store = store;
-    _this.api = new api_1.NewsFeedApi(config_1.NEWS_URL);
-    if (!_this.store.hasFeeds) {
-      _this.store.setFeeds(_this.api.getData());
-    }
-    return _this;
-  }
-  _createClass(NewsFeedView, [{
-    key: "render",
-    value: function render() {
-      this.store.currentPage = Number(location.hash.substring(7) || 1);
-      for (var i = (this.store.currentPage - 1) * 10; i < this.store.currentPage * 10; i++) {
+    _this.renderView = function () {
+      for (var i = (_this.store.currentPage - 1) * 10; i < _this.store.currentPage * 10; i++) {
         // 구조분해 할당 문법
-        var _this$store$getFeed = this.store.getFeed(i),
+        var _this$store$getFeed = _this.store.getFeed(i),
           id = _this$store$getFeed.id,
           title = _this$store$getFeed.title,
           comments_count = _this$store$getFeed.comments_count,
@@ -439,12 +454,29 @@ var NewsFeedView = /*#__PURE__*/function (_view_1$default) {
           points = _this$store$getFeed.points,
           time_ago = _this$store$getFeed.time_ago,
           read = _this$store$getFeed.read;
-        this.addHtml("\n                <div class=\"p-6 ".concat(read ? "bg-red-500" : "bg-white", " mt-6 rounded-lg shadow-md transition-colors duration-500 hover:bg-green-100\">\n                    <div class=\"flex\">\n                        <div class=\"flex-auto\">\n                            <a href=\"#/show/").concat(id, "\">").concat(title, "</a>  \n                        </div>\n                        <div class=\"text-center text-sm\">\n                            <div class=\"w-10 text-white bg-green-300 rounded-lg px-0 py-2\">").concat(comments_count, "</div>\n                        </div>\n                    </div>\n                        <div class=\"flex mt-3\">\n                        <div class=\"grid grid-cols-3 text-sm text-gray-500\">\n                            <div><i class=\"fas fa-user mr-1\"></i>").concat(user, "</div>\n                            <div><i class=\"fas fa-heart mr-1\"></i>").concat(points, "</div>\n                            <div><i class=\"far fa-clock mr-1\"></i>").concat(time_ago, "</div>\n                        </div>  \n                    </div>\n                </div> \n        "));
+        _this.addHtml("\n                <div class=\"p-6 ".concat(read ? "bg-red-500" : "bg-white", " mt-6 rounded-lg shadow-md transition-colors duration-500 hover:bg-green-100\">\n                    <div class=\"flex\">\n                        <div class=\"flex-auto\">\n                            <a href=\"#/show/").concat(id, "\">").concat(title, "</a>  \n                        </div>\n                        <div class=\"text-center text-sm\">\n                            <div class=\"w-10 text-white bg-green-300 rounded-lg px-0 py-2\">").concat(comments_count, "</div>\n                        </div>\n                    </div>\n                        <div class=\"flex mt-3\">\n                        <div class=\"grid grid-cols-3 text-sm text-gray-500\">\n                            <div><i class=\"fas fa-user mr-1\"></i>").concat(user, "</div>\n                            <div><i class=\"fas fa-heart mr-1\"></i>").concat(points, "</div>\n                            <div><i class=\"far fa-clock mr-1\"></i>").concat(time_ago, "</div>\n                        </div>  \n                    </div>\n                </div> \n        "));
       }
-      this.setTemplateData("news_feed", this.getHtml());
-      this.setTemplateData("prev_page", String(this.store.prevPage));
-      this.setTemplateData("next_page", String(this.store.nextPage));
-      this.updateView();
+      _this.setTemplateData("news_feed", _this.getHtml());
+      _this.setTemplateData("prev_page", String(_this.store.prevPage));
+      _this.setTemplateData("next_page", String(_this.store.nextPage));
+      _this.updateView();
+    };
+    _this.store = store;
+    _this.api = new api_1.NewsFeedApi(config_1.NEWS_URL);
+    return _this;
+  }
+  _createClass(NewsFeedView, [{
+    key: "render",
+    value: function render() {
+      var _this2 = this;
+      this.store.currentPage = Number(location.hash.substring(7) || 1);
+      if (!this.store.hasFeeds) {
+        this.api.getDataWithPromise(function (feeds) {
+          _this2.store.setFeeds(feeds);
+          _this2.renderView();
+        });
+      }
+      this.renderView();
     }
   }]);
   return NewsFeedView;
