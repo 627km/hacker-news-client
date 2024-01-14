@@ -38,18 +38,12 @@ export default class NewsFeedView extends View {
         this.api = new NewsFeedApi(NEWS_URL);
     }
 
-    render(): void {
+    async render(): Promise<void> {
         this.store.currentPage = Number(location.hash.substring(7) || 1);
         if (!this.store.hasFeeds) {
-            this.api.getDataWithPromise((feeds: NewsFeed[]) => {
-                this.store.setFeeds(feeds);
-                this.renderView();
-            });
+            this.store.setFeeds(await this.api.getData());
         }
-        this.renderView();
-    }
 
-    renderView = () => {
         for (let i = (this.store.currentPage - 1) * 10; i < this.store.currentPage * 10; i++) {
             // 구조분해 할당 문법
             const { id, title, comments_count, user, points, time_ago, read } = this.store.getFeed(i);
@@ -79,5 +73,5 @@ export default class NewsFeedView extends View {
         this.setTemplateData("next_page", String(this.store.nextPage));
 
         this.updateView();
-    };
+    }
 }
