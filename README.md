@@ -1,2 +1,4 @@
 # hacker-news-client
-Simple Web Application
+
+-   Simple Web Application<br>
+-   Practice JavaScript, TypeScript
